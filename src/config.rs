@@ -1,4 +1,6 @@
 use clap::ArgMatches;
+use colored::Colorize;
+use regex::{Captures, RegexBuilder};
 
 pub struct Config<'a> {
     pub query: &'a str,
@@ -18,27 +20,27 @@ impl<'a> Config<'a> {
     }
 }
 
-pub fn search_case_sensitive<'a>(query: &'a str, contents: &'a str) -> Vec<&'a str> {
-    contents.lines().fold(Vec::new(), |mut acc, l| {
-        if l.contains(query) {
-            acc.push(l);
-            acc
-        } else {
-            acc
-        }
-    })
+pub fn search_case_sensitive<'a>(query: &'a str, contents: &'a str) -> Vec<String> {
+    contents.lines()
+        .filter(|l| l.contains(query))
+        .map(|l| l.replace(query, &format!("{}", query.red())))
+        .collect()
 }
 
-pub fn search_case_insensitive<'a>(query: &'a str, contents: &'a str) -> Vec<&'a str> {
-    let lowercased_query = query.to_lowercase();
-    contents.lines().fold(Vec::new(), |mut acc, l| {
-        if l.to_lowercase().contains(&lowercased_query) {
-            acc.push(l);
-            acc
-        } else {
-            acc
-        }
-    })
+pub fn search_case_insensitive<'a>(query: &'a str, contents: &'a str) -> Vec<String> {
+    let rx = RegexBuilder::new(query)
+        .case_insensitive(true)
+        .build()
+        .expect("Invalid Regex");
+
+    contents.lines()
+        .filter(|l| rx.captures(l).is_some())
+        .map(|l| rx.replace(l,
+                            |caps: &Captures| caps.iter().map(|m| {
+                                &format!("{}", m.unwrap().as_str().red())
+                            }),
+        ))
+        .collect()
 }
 
 pub fn count_lines<'a>(query: &'a str, contents: &'a str) -> i32 {
